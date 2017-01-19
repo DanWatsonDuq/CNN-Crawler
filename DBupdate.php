@@ -1,15 +1,23 @@
 <?php
     
 	include("PHPCrawl_083/libs/PHPCrawler.class.php");
+	include("simple_html_dom.php");
 	
 	class MyCrawler extends PHPCrawler 
 { 
   function handleDocumentInfo(PHPCrawlerDocumentInfo $PageInfo) 
   { 
-    
     // print out the URL of the document 
-    echo $PageInfo->url."\n"; 
-	echo "\n";
+	$html = new simple_html_dom();
+	$html->load($PageInfo->content);
+	$title = $html->find('title', 0);
+
+	if($title != NULL)
+		echo $title->plaintext." ";
+	else
+		echo "failed to get title";
+	
+    echo "<br>\n"; 
   } 
 } 
 	
@@ -31,8 +39,12 @@
 	$crawler->setURL("www.cnn.com"); 
 	$crawler->setFollowMode(1);
 	
-	//if(!$crawler->addURLFollowRule("http:\/\/www\.cnn\.com\/(\d{4}\/\d{2}\/\d{2}\/)?politics\/?.*"))
-	//	echo "failure";
+	if(!$crawler->addLinkPriority("Obama",5))
+		echo "failure";
+	if(!$crawler->addLinkPriority("trump",5))
+		echo "failure";
+		
+	
 	if(!$crawler->addURLFollowRule("#.*politics.*$# i"))
 		echo "failure";
 
