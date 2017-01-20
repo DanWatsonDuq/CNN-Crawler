@@ -2,35 +2,56 @@
     
 	include("PHPCrawl_083/libs/PHPCrawler.class.php");
 	include("simple_html_dom.php");
+	error_reporting(E_ALL);
+	require("config.php");
+	
+	
+	function determineTopic($html)
+  {
+	  $article = $html->find('body', 0)->plaintext;
+	  $tr = substr_count($article, "Trump");	//to be expanded by loading topic list
+	  $Ob = substr_count($article, "Obama");
+	  if($tr+$Ob == 0)
+		  return 0;
+	  if($tr<$Ob)
+		  return 1;
+	  else
+		  return 2;
+  }
+  
+  function insertTableElement($topic, $url, $date, $title)
+  {
+	  $date = preg_replace('#\/#','-', $date).' 00:00:00';
+	  require("config.php");
+	  $command = 'insert into articles (idx, date, url, title) values ('.$topic.',\''.$date.'\',\''.$url.'\',\''.$title.'\')';
+	  echo $command;
+	  $stmt = $dbh->prepare($command);
+	  $stmt->execute();
+  }
 	
 	class MyCrawler extends PHPCrawler 
 { 
+
   function handleDocumentInfo(PHPCrawlerDocumentInfo $PageInfo) 
   { 
-    // print out the URL of the document 
-	$html = new simple_html_dom();
-	$html->load($PageInfo->content);
-	$title = $html->find('title', 0);
-
-	if($title != NULL)
-		echo $title->plaintext." ";
-	else
-		echo "failed to get title";
+	preg_match( '/[0-9]{4}\/[0-9]{2}\/[0-9]{2}/',$PageInfo->url, $m);
+	if($m == null)
+		return;
+	$html = str_get_html($PageInfo->content);
+	$date = $m[0]; 
+	$topic = determineTopic($html);
+	$title = $html->find('title', 0)->plaintext;
 	
+	if($topic != 0)
+		insertTableElement($topic, $PageInfo->url, $date, $title);
+	
+	echo $topic.": ".$title;
     echo "<br>\n"; 
   } 
+  
+  
+  
 } 
-	
-	
-	//using curl to fetch the requested website as is.
-    function curl($url) {
-        $ch = curl_init();  
-        curl_setopt($ch, CURLOPT_URL, $url);   
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE); 
-        $data = curl_exec($ch); 
-        curl_close($ch);
-        return $data;   
-    }
 	
 	$crawler = new MyCrawler();
 	$crawler->addURLFilterRule("#\.(jpg|jpeg|gif|png)$# i"); 
@@ -39,16 +60,15 @@
 	$crawler->setURL("www.cnn.com"); 
 	$crawler->setFollowMode(1);
 	
-	if(!$crawler->addLinkPriority("Obama",5))
-		echo "failure";
-	if(!$crawler->addLinkPriority("trump",5))
-		echo "failure";
+	if(!$crawler->addLinkPriority("/Obama/",5))
+		echo "failure 59";
+	if(!$crawler->addLinkPriority("/Trump/",5))
+		echo "failure 61";
 		
 	
 	if(!$crawler->addURLFollowRule("#.*politics.*$# i"))
 		echo "failure";
 
-	
 	
 	$crawler->go();  
 	$report = $crawler->getProcessReport(); 

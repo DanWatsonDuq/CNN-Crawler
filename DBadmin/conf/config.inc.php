@@ -157,5 +157,5 @@
 
 	$conf['version'] = 19;
 
-	$cfg['servers'][$i]['hide_db']='^(cus488_db|ferpega_jobeet)$';
+	$cfg['servers'][0]['hide_db']='^(cus488_db|ferpega_jobeet)$';
 ?>
