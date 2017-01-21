@@ -3,7 +3,7 @@
 	include("PHPCrawl_083/libs/PHPCrawler.class.php");
 	include("simple_html_dom.php");
 	error_reporting(E_ALL);
-	require("config.php");
+	
 	
 	
 	function determineTopic($html)
@@ -23,6 +23,7 @@
   {
 	  $date = preg_replace('#\/#','-', $date).' 00:00:00';
 	  require("config.php");
+	  $title = preg_replace('#\'#','\'\'', $date).' 00:00:00';
 	  $command = 'insert into articles (idx, date, url, title) values ('.$topic.',\''.$date.'\',\''.$url.'\',\''.$title.'\')';
 	  echo $command;
 	  $stmt = $dbh->prepare($command);
@@ -41,7 +42,8 @@
 	$date = $m[0]; 
 	$topic = determineTopic($html);
 	$title = $html->find('title', 0)->plaintext;
-	
+	$html->clear();
+	unset($html);
 	if($topic != 0)
 		insertTableElement($topic, $PageInfo->url, $date, $title);
 	
@@ -55,7 +57,7 @@
 	
 	$crawler = new MyCrawler();
 	$crawler->addURLFilterRule("#\.(jpg|jpeg|gif|png)$# i"); 
-	$crawler->setTrafficLimit(10000 * 1024);
+	$crawler->setRequestLimit(200);
 	$crawler->addContentTypeReceiveRule("#text/html#"); 
 	$crawler->setURL("www.cnn.com"); 
 	$crawler->setFollowMode(1);
