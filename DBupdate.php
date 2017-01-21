@@ -3,7 +3,7 @@
 	include("PHPCrawl_083/libs/PHPCrawler.class.php");
 	include("simple_html_dom.php");
 	error_reporting(E_ALL);
-	
+	set_time_limit(120);
 	
 	
 	function determineTopic($html)
@@ -23,7 +23,13 @@
   {
 	  $date = preg_replace('#\/#','-', $date).' 00:00:00';
 	  require("config.php");
-	  $title = preg_replace('#\'#','\'\'', $date).' 00:00:00';
+	  $title = preg_replace('#\'#','\'\'', $title);
+	  $command = 'select 1 from articles where url= \''.$url.'\'';
+	  //echo $command.'<br>';
+	  $stmt = $dbh->prepare($command);
+	  $stmt->execute();
+	  if($stmt->fetch())
+		  return;
 	  $command = 'insert into articles (idx, date, url, title) values ('.$topic.',\''.$date.'\',\''.$url.'\',\''.$title.'\')';
 	  echo $command;
 	  $stmt = $dbh->prepare($command);
@@ -47,8 +53,8 @@
 	if($topic != 0)
 		insertTableElement($topic, $PageInfo->url, $date, $title);
 	
-	echo $topic.": ".$title;
-    echo "<br>\n"; 
+	//echo $topic.": ".$title;
+    //echo "<br>\n"; 
   } 
   
   
@@ -57,15 +63,15 @@
 	
 	$crawler = new MyCrawler();
 	$crawler->addURLFilterRule("#\.(jpg|jpeg|gif|png)$# i"); 
-	$crawler->setRequestLimit(200);
+	$crawler->setRequestLimit(100);
 	$crawler->addContentTypeReceiveRule("#text/html#"); 
 	$crawler->setURL("www.cnn.com"); 
 	$crawler->setFollowMode(1);
 	
 	if(!$crawler->addLinkPriority("/Obama/",5))
-		echo "failure 59";
+		echo "failure";
 	if(!$crawler->addLinkPriority("/Trump/",5))
-		echo "failure 61";
+		echo "failure";
 		
 	
 	if(!$crawler->addURLFollowRule("#.*politics.*$# i"))
@@ -83,6 +89,7 @@
 	echo "Documents received: ".$report->files_received.$lb; 
 	echo "Bytes received: ".$report->bytes_received." bytes".$lb; 
 	echo "Process runtime: ".$report->process_runtime." sec".$lb;  
+	//mail('vetemaster@gmail.com', 'DB Updating', 'Update Successful. Runtime = '.$report->process_runtime);
 	
 
 ?>
