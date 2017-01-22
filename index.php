@@ -6,20 +6,25 @@
     <title>Obama and Trump</title>
 	
 	<!-- Bootstrap core CSS -->
-    <link href="bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">
 	
 	<!-- Custom styles for this template -->
-    <link href="jumbotron-narrow.css" rel="stylesheet">
-
+    <link href="../bootstrap-3.3.7-dist/css/jumbotron-narrow.css" rel="stylesheet">
+	
+	<link rel="stylesheet" href="../jquery/jquery.mobile-1.4.5.min.css">
+    <script src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="//code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+	
+	
+	
 </head>
 <body>
-<div class="container">
+
 <div class="jumbotron">
- <h1>Barrack Obama & Donald Trump<h2>
+<h1 width="100%">Barrack Obama & Donald Trump<h1>
 </div>
-    <table>
-        <tbody>
-		<div class="row marketing">
+    
+	
        <?php
 			require("config.php");
             $Ostmt = $dbh->prepare('select * from articles where idx=1 order by date desc');
@@ -34,16 +39,35 @@
 				$Orow = $Ostmt->fetch(PDO::FETCH_ASSOC);
 				$Trow = $Tstmt->fetch(PDO::FETCH_ASSOC);
             ?>
-                <tr>
-                    <td><a href="<?php echo$Orow['url']."\">".$Orow['title']?></a></td>
-					<td><a href="<?php echo$Trow['url']."\">".$Trow['title']?></a></td>
-                </tr>
+					
+					 <div data-role="main" class="ui-content">
+						<div data-role="collapsible">
+							<h1><?php echo $Orow['title']?> </h1>
+								<p>&nbsp;&nbsp;&nbsp;&nbsp;<?php echo$Orow['body']?>
+							
+								<a href="<?php echo$Orow['url']."\">"."Read full article"?></a>
+								<p>
+								
+								
+						</div>
+					</div>
+				
+					
+					<div data-role="main" class="ui-content">
+						<div data-role="collapsible">
+							<h1><?php echo $Trow['title']?></h1>
+								<p>&nbsp;&nbsp;&nbsp;&nbsp;<?php echo$Trow['body']?>
+							
+								<a href="<?php echo$Trow['url']."\">"."Read full article"?></a>
+								<p>
+						</div>
+					</div>
+					
+               
             <?php
             }
             ?>  
-		</div>
-            </tbody>
-            </table>
-</div>
+		
+
 </body>
 </html>
