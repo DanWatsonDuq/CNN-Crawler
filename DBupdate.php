@@ -1,15 +1,15 @@
 <?php
     
-	include("PHPCrawl_083/libs/PHPCrawler.class.php");
+
 	include("simple_html_dom.php");
 	error_reporting(E_ALL);
 	set_time_limit(120);
+
 	
-	
-	function determineTopic($html)
+	function determineTopic($html)					//given article text, determine subject
   {
 	  $article = $html->find('body', 0)->plaintext;
-	  $tr = substr_count($article, "Trump");	//to be expanded by loading topic list
+	  $tr = substr_count($article, "Trump");	
 	  $Ob = substr_count($article, "Obama");
 	  if($tr+$Ob == 0)
 		  return 0;
@@ -19,20 +19,15 @@
 		  return 2;
   }
   
-  function insertTableElement($topic, $url, $date, $title, $preview)
+  function insertTableElement($topic, $url, $date, $title, $preview)	//preparing executing sql command
   {
-	  $date = preg_replace('#\/#','-', $date).' 00:00:00';
 	  require("config.php");
 	  $title = preg_replace('#\'#','\'\'', $title);
 	  $command = 'select 1 from articles where url= \''.$url.'\'';
-	  //echo $command.'<br>';
 	  $stmt = $dbh->prepare($command);
 	  $stmt->execute();
-	  if($stmt->fetch())
+	  if($stmt->fetch())	//check for duplicate article before inserting.
 		  return;
-	  //$preview = $html->find('p', 3)->plaintext;
-	  //$title = str_replace("'", "''", $title);
-	  //$preview= str_replace("'", "''", $preview);
 	  $command = 'insert into articles (idx, date, url, title, body) values ('.$topic.',\''.$date.'\',\''.$url.'\','.$dbh->quote($title).','.$dbh->quote($preview).')';
 	  echo $command;
 	  $stmt = $dbh->prepare($command);
@@ -41,85 +36,122 @@
   
   
 	
-	class MyCrawler extends PHPCrawler 
-{ 
+	class Crawler
+	{ 
+	public $URLFilterRules = array();
+	public $URLFollowRules = array();
+	public $URLCaptures = array();
+	public $visited = array();
+	public $articleCount=0;
+	public $maximumArticleCount=200;
+	
+	function addFilter($rule){						//filters specify url's to not follow
+		array_push($this->URLFilterRules, $rule);	//will follow iff no matches exist
+	}
+	function addFollow($rule){						//follow rules specify which urls to follow	
+		array_push($this->URLFollowRules, $rule);	//will follow iff at least one match exists
+	}
+	function addCapture($rule){						//specifies which docs to capture.
+		array_push($this->URLCaptures, $rule);
+	}
+	function shouldFollow($url){					//applies following rules.
+		$success = false;
+		foreach($this->URLFollowRules  as $rule){
+			if(preg_match($rule, $url))
+				$success = true;
+		}
+		if(!$success)
+			return false;
+		
+		foreach($this->URLFilterRules  as $rule){
+			if(preg_match($rule, $url))
+				$success = false;
+		}
+		if(!$success)
+			return false;
+		
+		return true;
+	}
+	
+	function shouldCapture($url){				//applies capture rules.
+		foreach($this->URLCaptures as $rule){
+			if(preg_match($rule, $url))
+				return true;
+		}
+	}
+	
+	
+	function crawl($base,$relurl, $depth)	//base remains the same, relurl determines which page is displayed
+	{	
+		$url = $base.$relurl;
+		echo "getting ".$url."<br>";
+		$this->articleCount++;
+		$c = curl_init($url);
+		curl_setopt($c, CURLOPT_RETURNTRANSFER, true);	//fetch page with curl
 
-  function handleDocumentInfo(PHPCrawlerDocumentInfo $PageInfo) 
+		$page = curl_exec($c);		
+		
+		$html =  str_get_html($page);
+		
+		if(!is_object($html)){							//check for request failure
+			echo "Failed to get page: ".$url."<br>";
+			return;
+		}
+		else
+			echo "Got Page: ".$url."<br>";
+		
+		if($this->shouldCapture($url)){					//check capture rules
+			$this->handleDocumentInfo($html, $url);
+		}
+		if($depth == 0)
+			return;
+		foreach($html->find('a') as $element){			//get all links
+			 
+			 $link = $element->getAttribute('href');	
+			 if(substr_count($link, "http")!=0)
+				 continue;
+			 
+			if($this->shouldFollow($base.$link)&&$this->articleCount<$this->maximumArticleCount&&!in_array($base.$link, $this->visited)){	//check if not already visited, under page budget, and obeys follow rules
+				array_push($this->visited, $base.$link);
+				$this->crawl($base, $link, $depth-1);
+			}
+			else
+				echo "not following: ".$base.$link."<br>";
+		}
+	}
+	
+	
+
+
+  function handleDocumentInfo($html, $url) 
   { 
-	preg_match( '/[0-9]{4}\/[0-9]{2}\/[0-9]{2}/',$PageInfo->url, $m);
+	preg_match( '/[0-9]{4}\/[0-9]{2}\/[0-9]{2}/',$url, $m);
 	if($m == null)
 		return;
-	$html = new simple_html_dom();
-	$html->load($PageInfo->content);
-	//echo $PageInfo->content;
-	if(is_null($html))
-	{
-		echo "failed to get page: ".$PageInfo->url;
-		return;
-	}
 	$date = $m[0]; 
 	$topic = determineTopic($html);
-	//$body = getPreview($html);
 	$title = str_replace('- CNNPolitics.com','',$html->find('title', 0)->plaintext);
-	//$bodyHtmlRaw = $PageInfo->content;
 	$preview = "";
 	foreach($html->find('div class="zn-body__paragraph"') as $p){
 		$preview = $preview.($p->plaintext);
 	}
-	
-	//foreach($body as $p){
-	//	if(strlen($p->plaintext)>strlen($preview))
-	//		$preview = $p->plaintext;
-	//}
 	$preview = preg_replace("#.*\(CNN\)#", "", $preview);
 	$preview = substr($preview, 0, 600).'...';
-	$html->clear();
 	unset($html);
 	if($topic != 0)
-		insertTableElement($topic, $PageInfo->url, $date, $title, $preview);
-	
-	//echo $topic.": ".$title;
-    //echo "<br>\n"; 
-  } 
-  
-  
-  
+		insertTableElement($topic, $url, $date, $title, $preview);
+   } 
   
   
 } 
 	
-	$crawler = new MyCrawler();
-	$crawler->addURLFilterRule("#\.(jpg|jpeg|gif|png)$# i"); 
-	$crawler->setRequestLimit(200);
-	$crawler->addContentTypeReceiveRule("#text/html#"); 
-	$crawler->setURL("http://www.cnn.com/politics"); 
-	$crawler->setFollowMode(1);
-	
-	if(!$crawler->addLinkPriority("/Obama/",7))
-		echo "failure";
-	if(!$crawler->addLinkPriority("/Trump/",5))
-		echo "failure";
-		
-	
-	if(!$crawler->addURLFollowRule("#.*politics.*$# i"))
-		echo "failure";
-	
-	$crawler->addURLFilterRule("#.*videos.*$# i");
-	$crawler->addURLFilterRule("#.*gallery.*$# i");
-
-	
-	$crawler->go();  
-	$report = $crawler->getProcessReport(); 
-
-	if (PHP_SAPI == "cli") $lb = "\n"; 
-	else $lb = "<br />"; 
-		 
-	echo "Summary:".$lb; 
-	echo "Links followed: ".$report->links_followed.$lb; 
-	echo "Documents received: ".$report->files_received.$lb; 
-	echo "Bytes received: ".$report->bytes_received." bytes".$lb; 
-	echo "Process runtime: ".$report->process_runtime." sec".$lb;  
-	mail('vetemaster@gmail.com', 'DB Updating', 'Update Successful. Runtime = '.$report->process_runtime);
-	
+	$crawler = new Crawler();
+	$crawler->addCapture("#cnn.com\/.*\/(politics|money)#");
+	$crawler->addFilter("#\.(jpg|jpeg|gif|png)$# i"); 
+	$crawler->addFilter("#.*videos.*$# i");
+	$crawler->addFilter("#.*gallery.*$# i");
+	$crawler->addFollow("#politics|money#");
+	$crawler->crawl("http://www.cnn.com","/politics", 5);
+	echo "Complete. Articles Visited: ".$crawler->articleCount;
 
 ?>

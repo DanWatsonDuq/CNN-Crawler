@@ -38,33 +38,37 @@
             for($i =0; $i<25; $i++) {
 				$Orow = $Ostmt->fetch(PDO::FETCH_ASSOC);
 				$Trow = $Tstmt->fetch(PDO::FETCH_ASSOC);
+				if($Orow){
             ?>
 					
 					 <div data-role="main" class="ui-content">
 						<div data-role="collapsible">
-							<h1><?php echo $Orow['title']?> </h1>
-								<p>&nbsp;&nbsp;&nbsp;&nbsp;<?php echo$Orow['body']?>
+							<h1><?php echo str_replace("\"", "'",$Orow['title'])?> </h1>
+								<p>&nbsp;&nbsp;&nbsp;&nbsp;<?php echo str_replace("\"", "'",$Orow['body'])?>
 							
-								<a href="<?php echo$Orow['url']."\">"."Read full article"?></a>
+								<a href="<?php echo$Orow['url']."\">"."Read full article"?></a> - <?php echo $Orow['date']?>
 								<p>
 								
 								
 						</div>
 					</div>
-				
+				<?php } 
+				if($Trow){
+				?>	
 					
 					<div data-role="main" class="ui-content">
 						<div data-role="collapsible">
-							<h1><?php echo $Trow['title']?></h1>
-								<p>&nbsp;&nbsp;&nbsp;&nbsp;<?php echo$Trow['body']?>
+							<h1><?php echo str_replace("\"", "'",$Trow['title'])?></h1>
+								<p>&nbsp;&nbsp;&nbsp;&nbsp;<?php echo str_replace("\"", "'",$Trow['body'])?>
 							
-								<a href="<?php echo$Trow['url']."\">"."Read full article"?></a>
+								<a href="<?php echo$Trow['url']."\">"."Read full article"?></a> - <?php echo $Trow['date']?>
 								<p>
 						</div>
 					</div>
 					
                
             <?php
+				}
             }
             ?>  
 		
